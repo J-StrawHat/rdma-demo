@@ -1,24 +1,4 @@
-#include <netdb.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <rdma/rdma_cma.h>
-
-#define TEST_NZ(x) do { if ( (x)) die("error: " #x " failed (returned non-zero)." ); } while (0)
-#define TEST_Z(x)  do { if (!(x)) die("error: " #x " failed (returned zero/null)."); } while (0)
-
-const int BUFFER_SIZE = 1024;
-const int TIMEOUT_IN_MS = 500; /* ms */
-
-struct context {
-  struct ibv_context *ctx;
-  struct ibv_pd *pd;
-  struct ibv_cq *cq;
-  struct ibv_comp_channel *comp_channel;
-
-  pthread_t cq_poller_thread;
-};
+#include "common.h"
 
 struct connection {
   struct rdma_cm_id *id;
@@ -32,8 +12,6 @@ struct connection {
 
   int num_completions;
 };
-
-static void die(const char *reason);
 
 static void build_context(struct ibv_context *verbs);
 static void build_qp_attr(struct ibv_qp_init_attr *qp_attr);
@@ -62,31 +40,48 @@ int main(int argc, char **argv)
 
   TEST_NZ(getaddrinfo(argv[1], argv[2], NULL, &addr));
 
-  TEST_Z(ec = rdma_create_event_channel());
-  TEST_NZ(rdma_create_id(ec, &conn, NULL, RDMA_PS_TCP));
-  TEST_NZ(rdma_resolve_addr(conn, NULL, addr->ai_addr, TIMEOUT_IN_MS));
+  struct timeval timestart;
+  struct timeval timeend;
+  double meanTotalTime = 0.0f;
+  for (int i = 0; i < 20; i++) {
+    TEST_Z(ec = rdma_create_event_channel());
+    TEST_NZ(rdma_create_id(ec, &conn, NULL, RDMA_PS_TCP));
+    TEST_NZ(rdma_resolve_addr(conn, NULL, addr->ai_addr, TIMEOUT_IN_MS));
+    gettimeofday(&timestart, NULL);
+    while (rdma_get_cm_event(ec, &event) == 0) {
+      struct rdma_cm_event event_copy;
 
-  freeaddrinfo(addr);
+      memcpy(&event_copy, event, sizeof(*event));
+      rdma_ack_cm_event(event);
 
-  while (rdma_get_cm_event(ec, &event) == 0) {
-    struct rdma_cm_event event_copy;
-
-    memcpy(&event_copy, event, sizeof(*event));
-    rdma_ack_cm_event(event);
-
-    if (on_event(&event_copy))
-      break;
+      if (on_event(&event_copy))
+        break;
+    }
+    gettimeofday(&timeend, NULL);
+    long diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) +
+                timeend.tv_usec - timestart.tv_usec;
+    double msTotalTime = 1.0f * diff / 1000.0;
+    printf("%d: time = %lf ms\n", i, msTotalTime);
+    meanTotalTime += msTotalTime;
+  }
+  meanTotalTime /= 20.0f;
+  const char* logDir = "./logfile.csv";
+  // 打开文件用于追加
+  FILE* outFile = fopen(logDir, "a");
+  if (outFile == NULL) {
+      perror("Error opening file");
+      return -1;
   }
 
+  // 写入数据
+  fprintf(outFile, "%d, %f\n", BUFFER_SIZE, meanTotalTime);
+
+  // 关闭文件
+  fclose(outFile);
+  printf("mean time = %lf ms\n", meanTotalTime);
   rdma_destroy_event_channel(ec);
-
+  freeaddrinfo(addr);
   return 0;
-}
-
-void die(const char *reason)
-{
-  fprintf(stderr, "%s\n", reason);
-  exit(EXIT_FAILURE);
 }
 
 void build_context(struct ibv_context *verbs)
@@ -265,7 +260,7 @@ int on_disconnect(struct rdma_cm_id *id)
 
   rdma_destroy_id(id);
 
-  return 1; /* exit event loop */
+  return 1; // 对于客户端而言，这里返回1，表示不再等待新的连接
 }
 
 int on_event(struct rdma_cm_event *event)

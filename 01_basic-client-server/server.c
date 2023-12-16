@@ -1,35 +1,14 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <rdma/rdma_cma.h>
-
-// 两个宏用于错误检查
-#define TEST_NZ(x) do { if ( (x)) die("error: " #x " failed (returned non-zero)." ); } while (0)
-#define TEST_Z(x)  do { if (!(x)) die("error: " #x " failed (returned zero/null)."); } while (0)
-
-const int BUFFER_SIZE = 1024;
-
-struct context {
-  struct ibv_context *ctx; // 代表了一个与RDMA设备的特定上下文的连接。这个上下文包含了执行RDMA操作所需的所有资源和信息，如设备特性和配置。
-  struct ibv_pd *pd; // Protection Domain, 保护域，是一种资源隔离机制，确保在同一个保护域内的操作（如内存访问）是安全的。
-  struct ibv_cq *cq; // Completion Queue，完成队列，用于存放完成的工作请求（Work Request, WR）的队列。当一个RDMA操作完成（如数据传输完成），其状态会被放入完成队列。
-  struct ibv_comp_channel *comp_channel; // Completion Channel，完成通道，在完成队列中有新的完成事件时通知应用程序
-
-  pthread_t cq_poller_thread; //记录 轮询线程 的线程ID，负责定期检查完成队列，处理完成事件。
-};
+#include "common.h"
 
 struct connection {
   struct ibv_qp *qp;  // Queue Pair, 队列对
 
-  struct ibv_mr *recv_mr // Memory Region, 内存区域指针，用于注册接收缓冲区，而 ibv_mr 这个结构体包含了内存区域的相关信息（地址、大小及访问权限）
+  struct ibv_mr *recv_mr; // Memory Region, 内存区域指针，用于注册接收缓冲区，而 ibv_mr 这个结构体包含了内存区域的相关信息（地址、大小及访问权限）
   struct ibv_mr *send_mr; // 用于注册发送缓冲区
 
   char *recv_region; // 接收数据的缓冲区，这块内存通常会被注册为一个内存区域（通过recv_mr），以便通过RDMA进行访问。
   char *send_region;
 }; // conn->recv_region提供了数据接收的物理内存位置，conn->recv_mr代表了这块内存的注册状态，而struct ibv_sge则用于在RDMA操作中引用这块内存
-
-static void die(const char *reason);
 
 static void build_context(struct ibv_context *verbs);
 static void build_qp_attr(struct ibv_qp_init_attr *qp_attr);
@@ -89,11 +68,6 @@ int main(int argc, char **argv)
   return 0;
 }
 
-void die(const char *reason)
-{
-  fprintf(stderr, "%s\n", reason);
-  exit(EXIT_FAILURE);
-}
 // 推迟构建上下文，直到第一个连接请求到达。这是因为 rdmacm listener ID 不一定绑定到特定的 RDMA 设备
 void build_context(struct ibv_context *verbs) // 传入的参数是一个 verbs 上下文，即一个与 RDMA 设备的特定上下文的连接
 { 
@@ -268,7 +242,7 @@ int on_disconnect(struct rdma_cm_id *id)
 
   rdma_destroy_id(id);
 
-  return 0;
+  return 0; // 对于服务端而言，这里不返回1，表示继续等待新的连接
 }
 
 // 针对不同的事件类型，调用不同的处理函数
