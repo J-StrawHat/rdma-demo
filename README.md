@@ -32,6 +32,14 @@
 - For server: `./server`
 - For client: `./client <server inet IP> <server random port>`
 
+02_read-write:
+- For writing:
+    - server:  `./rdma-server write`
+    - client: `./rdma-client write <server inet IP> <server random port>`
+- For reading:
+    - server: `./rdma-server read`
+    - client: `./rdma-client read <server inet IP> <server random port>`
+
 ## References:
 - [Basic codes from thegeekinthecorner.com](https://github.com/tarickb/the-geek-in-the-corner.git)
 - [Tutorial](https://thegeekinthecorner.wordpress.com/2013/02/02/rdma-tutorial-pdfs/)
