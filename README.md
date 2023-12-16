@@ -39,6 +39,10 @@
 - For reading:
     - server: `./rdma-server read`
     - client: `./rdma-client read <server inet IP> <server random port>`
+    
+04_gpu-direct-rdma:
+- For server (with GPU): `./gpu_server -t 0 -a 192.168.0.208 192.168.0.210 -u ca:00.0 -n 10000 -D 1 -s 10000000 -p 18001`
+- For client (w/o GPU): `./local_client -a 192.168.0.210 -n 10000 -D 1 -s 10000000 -p 18001`
 
 ## References:
 - [Basic codes from thegeekinthecorner.com](https://github.com/tarickb/the-geek-in-the-corner.git)
@@ -46,4 +50,5 @@
     - [Building an RDMA-Capable Application with IB Verbs](http://www.hpcadvisorycouncil.com/pdf/building-an-rdma-capable-application-with-ib-verbs.pdf)
     - [RDMA Read and Write with IB Verbs](http://www.hpcadvisorycouncil.com/pdf/rdma-read-and-write-with-ib-verbs.pdf)
     - [Basic Flow Control for RDMA Transfers](http://www.hpcadvisorycouncil.com/pdf/vendor_content/basic-flow-control-for-rdma-transfers.pdf)
+- [GPU Direct RDMA Access example code](https://github.com/Mellanox/gpu_direct_rdma_access.git)
 
