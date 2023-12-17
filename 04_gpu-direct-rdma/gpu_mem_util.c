@@ -47,7 +47,7 @@
 #include <getopt.h>
 #include <arpa/inet.h>
 #include <time.h>
-#define HAVE_CUDA 
+
 #ifdef HAVE_CUDA
 /* "/usr/local/cuda/include/" is added to build include path in the Makefile */
 #include "cuda.h"
@@ -207,6 +207,19 @@ static void *init_gpu(size_t gpu_buf_size, const int devID)
     }
     DEBUG_LOG("allocated GPU buffer address at %016llx pointer=%p\n", d_A, (void*)d_A);
 
+    if (debug_fast_path) {
+        // copy data to GPU
+        char *h_A = (char *)malloc(aligned_size);
+        for (int i = 0; i < aligned_size - 1; i++) {
+            h_A[i] = 'g';
+        }
+        h_A[aligned_size - 1] = '\0';
+        cu_result = cuMemcpyHtoD(d_A, h_A, aligned_size);
+        if (cu_result != CUDA_SUCCESS) {
+            fprintf(stderr, "cuMemcpyHtoD error=%d\n", cu_result);
+            return NULL;
+        }
+    }
     return ((void*)d_A);
 }
 
@@ -232,7 +245,6 @@ static int free_gpu(void *gpu_buff)
 void *work_buffer_alloc(size_t length, int use_cuda, const int devID)
 {
     void    *buff = NULL;
-
     if (use_cuda) {
         /* Mem allocation on GPU */
 #ifdef HAVE_CUDA
@@ -251,6 +263,13 @@ void *work_buffer_alloc(size_t length, int use_cuda, const int devID)
         if (!buff) {
             fprintf(stderr, "Couldn't allocate work buffer on CPU.\n");
             return NULL;
+        }
+        if (debug_fast_path) {
+            for (int i = 0; i < length - 1; i++) {
+                ((char*)buff)[i] = 'h';
+            }
+            ((char*)buff)[length - 1] = '\0';
+            printf("2nd Element of Buffer: %c\n", ((char*)buff)[1]);
         }
         DEBUG_LOG("memory buffer(%p) allocated\n", buff);
     }
@@ -272,6 +291,22 @@ void work_buffer_free(void *buff, int use_cuda)
         DEBUG_LOG("free memory buffer(%p)\n", buff);
         free(buff);
     }
+}
+
+void work_buffer_print(void *buff, int use_cuda, size_t length)
+{
+    char *h_A = (char *)malloc(length + 1);
+    if (use_cuda) {
+#ifdef HAVE_CUDA
+        CUdeviceptr d_A = (CUdeviceptr) buff;
+        cuMemcpyDtoH(h_A, d_A, length);
+#endif
+    } else {
+        memcpy(h_A, buff, length);
+    }
+    h_A[length] = '\0';
+    printf("Buffer content: %s\n", h_A);
+    free(h_A);
 }
 
 /*----------------------------------------------------------------------------*/
