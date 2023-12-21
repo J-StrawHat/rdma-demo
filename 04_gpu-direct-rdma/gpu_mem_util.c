@@ -153,7 +153,7 @@ static int get_gpu_device_id_from_bdf(const char *bdf)
     return -1;
 }
 
-static void *init_gpu(size_t gpu_buf_size, const int devID)
+static void *init_gpu(size_t gpu_buf_size, const char *bdf)
 {
     const size_t    gpu_page_size = 64*1024;
     size_t          aligned_size;
@@ -171,10 +171,10 @@ static void *init_gpu(size_t gpu_buf_size, const int devID)
         print_gpu_devices_info();
     }
     
-    // int dev_id = get_gpu_device_id_from_bdf(bdf);
-    int dev_id = devID;
+    int dev_id = get_gpu_device_id_from_bdf(bdf);
     if (dev_id < 0) {
-        fprintf(stderr, "Wrong device index (%d) \n", dev_id);
+        fprintf(stderr, "Wrong device index (%d) obtained from bdf \"%s\"\n",
+                dev_id, bdf);
         /* This function returns NULL if there are no CUDA capable devices. */
         return NULL;
     }
@@ -207,19 +207,6 @@ static void *init_gpu(size_t gpu_buf_size, const int devID)
     }
     DEBUG_LOG("allocated GPU buffer address at %016llx pointer=%p\n", d_A, (void*)d_A);
 
-    if (debug_fast_path) {
-        // copy data to GPU
-        char *h_A = (char *)malloc(aligned_size);
-        for (int i = 0; i < aligned_size - 1; i++) {
-            h_A[i] = 'g';
-        }
-        h_A[aligned_size - 1] = '\0';
-        cu_result = cuMemcpyHtoD(d_A, h_A, aligned_size);
-        if (cu_result != CUDA_SUCCESS) {
-            fprintf(stderr, "cuMemcpyHtoD error=%d\n", cu_result);
-            return NULL;
-        }
-    }
     return ((void*)d_A);
 }
 
@@ -242,13 +229,14 @@ static int free_gpu(void *gpu_buff)
  * Memory allocation on CPU or GPU according to HAVE_CUDA pre-compile option and use_cuda flag
  * Return value: Allocated buffer pointer (if success), NULL (if error)
  ****************************************************************************************/
-void *work_buffer_alloc(size_t length, int use_cuda, const int devID)
+void *work_buffer_alloc(size_t length, int use_cuda, const char *bdf)
 {
     void    *buff = NULL;
+
     if (use_cuda) {
         /* Mem allocation on GPU */
 #ifdef HAVE_CUDA
-        buff = init_gpu(length, devID);
+        buff = init_gpu(length, bdf);
 #else
         fprintf(stderr, "Can't init GPU, HAVE_CUDA mode isn't set");
 #endif //HAVE_CUDA
@@ -263,13 +251,6 @@ void *work_buffer_alloc(size_t length, int use_cuda, const int devID)
         if (!buff) {
             fprintf(stderr, "Couldn't allocate work buffer on CPU.\n");
             return NULL;
-        }
-        if (debug_fast_path) {
-            for (int i = 0; i < length - 1; i++) {
-                ((char*)buff)[i] = 'h';
-            }
-            ((char*)buff)[length - 1] = '\0';
-            printf("2nd Element of Buffer: %c\n", ((char*)buff)[1]);
         }
         DEBUG_LOG("memory buffer(%p) allocated\n", buff);
     }
@@ -291,22 +272,6 @@ void work_buffer_free(void *buff, int use_cuda)
         DEBUG_LOG("free memory buffer(%p)\n", buff);
         free(buff);
     }
-}
-
-void work_buffer_print(void *buff, int use_cuda, size_t length)
-{
-    char *h_A = (char *)malloc(length + 1);
-    if (use_cuda) {
-#ifdef HAVE_CUDA
-        CUdeviceptr d_A = (CUdeviceptr) buff;
-        cuMemcpyDtoH(h_A, d_A, length);
-#endif
-    } else {
-        memcpy(h_A, buff, length);
-    }
-    h_A[length] = '\0';
-    printf("Buffer content: %s\n", h_A);
-    free(h_A);
 }
 
 /*----------------------------------------------------------------------------*/

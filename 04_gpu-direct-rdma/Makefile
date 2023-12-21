@@ -3,7 +3,7 @@ CC = gcc
 ODIR = obj
 
 ifeq ($(USE_CUDA),1)
-  CUDAFLAGS = -I/usr/local/cuda-11.4/targets/x86_64-linux/include
+  CUDAFLAGS = -I/usr/local/cuda-10.1/targets/x86_64-linux/include
   CUDAFLAGS += -I/usr/local/cuda/include
   PRE_CFLAGS1 = -I$(IDIR) $(CUDAFLAGS) -g -DHAVE_CUDA
   LIBS = -Wall -lrdmacm -libverbs -lmlx5 -lcuda
@@ -18,8 +18,8 @@ else
   CFLAGS = $(PRE_CFLAGS1)
 endif
 
-OEXE_CLT = gpu_server
-OEXE_SRV = local_client
+OEXE_CLT = client
+OEXE_SRV = server
 
 DEPS = gpu_direct_rdma_access.h
 DEPS += ibv_helper.h
@@ -38,10 +38,10 @@ all : make_odir $(OEXE_CLT) $(OEXE_SRV)
 
 make_odir: $(ODIR)/
 
-$(OEXE_SRV) : $(patsubst %,$(ODIR)/%,$(OBJS)) $(ODIR)/local_client.o
+$(OEXE_SRV) : $(patsubst %,$(ODIR)/%,$(OBJS)) $(ODIR)/server.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
-$(OEXE_CLT) : $(patsubst %,$(ODIR)/%,$(OBJS)) $(ODIR)/gpu_server.o
+$(OEXE_CLT) : $(patsubst %,$(ODIR)/%,$(OBJS)) $(ODIR)/client.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 $(ODIR)/:

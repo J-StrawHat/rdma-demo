@@ -41,15 +41,15 @@
     - client: `./rdma-client read <server inet IP> <server random port>`
     
 04_gpu-direct-rdma:
-- For server (with GPU):
+- For server (.164):
   ```bash
-  ./gpu_server -a <local host inet IP> -n <iterations> -D <debug mask> -s <data size> -p <port> [-u <GPU device ID>]
-  # ./gpu_server -a 192.168.0.208 -n 10000 -D 1 -s 10000000 -p 18001 -u 0
+  ./server -a <local host inet IP> -n <iterations> -D <debug mask> -s <data size> -p <port> [-u <GPU BDF>]
+  # ./gpu_server -a 192.168.0.210 -n 10000 -D 1 -s 10000000 -p 17788 -u 17:00.0
   ```
-- For client (w/o GPU):
+- For client (.163):
   ```bash
-  ./local_client -t <RDMA operation type> -a <local host inet IP> <remote server inet IP> -n <iterations> -D <debug mask> -s <data size> -p <port>
-  # ./local_client -t 0 -a 192.168.0.210 192.168.0.208 -n 10000 -D 1 -s 10000000 -p 18001
+  ./client -t <RDMA operation type> -a <local host inet IP> <remote server inet IP> -n <iterations> -D <debug mask> -s <data size> -p <port> [-u <GPU BDF>]
+  # ./client -t 0 -a 192.168.0.208 192.168.0.210 -n 10000 -D 1 -s 10000000 -p 17788 -u ca:00.0
   ```
 
 ## References:

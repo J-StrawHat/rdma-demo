@@ -615,7 +615,7 @@ struct rdma_device *rdma_open_device_client(struct sockaddr *addr)
     attr_ex.pd = rdma_dev->pd;
     attr_ex.srq = rdma_dev->srq; /* Should use SRQ for client only (DCT) */
 
-    /* create DCT(Dynamic Connection Target, 连接目标) */
+    /* create DCT */
     attr_dv.comp_mask |= MLX5DV_QP_INIT_ATTR_MASK_DC;
     attr_dv.dc_init_attr.dc_type = MLX5DV_DCTYPE_DCT;
     attr_dv.dc_init_attr.dct_access_key = DC_KEY;
@@ -793,7 +793,7 @@ struct rdma_device *rdma_open_device_server(struct sockaddr *addr)
     attr_ex.comp_mask |= IBV_QP_INIT_ATTR_PD;
     attr_ex.pd = rdma_dev->pd;
 
-    /* create DCI(Dynamic Connection Initiator，连接发起端) */
+    /* create DCI */
     attr_dv.comp_mask |= MLX5DV_QP_INIT_ATTR_MASK_DC;
     attr_dv.dc_init_attr.dc_type = MLX5DV_DCTYPE_DCI;
     
