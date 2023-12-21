@@ -40,7 +40,7 @@
     - server: `./rdma-server read`
     - client: `./rdma-client read <server inet IP> <server random port>`
     
-04_gpu-direct-rdma:
+04_gpu-direct-rdma: (build: `make clean; make USE_CUDA=1`)
 - For server (.164):
   ```bash
   ./server -a <local host inet IP> -n <iterations> -D <debug mask> -s <data size> -p <port> [-u <GPU BDF>]
